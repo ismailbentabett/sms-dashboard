@@ -61,3 +61,14 @@ Choices made where the spec was ambiguous or where the docs or live API differed
   - An empty install list is ignored rather than treated as "uninstalled everywhere".
   - A manual Track/Ignore choice is never overridden.
 - **Callback CSRF:** the Connect button sets a 15-minute httpOnly state cookie; the callback requires it (and a matching `state` if GHL echoes it). Installs must therefore start from the dashboard's Connect button.
+
+## Phase 1d: opportunities first (your call: "track the opportunities, keep convos for later")
+
+- The sync scope defaults to **`opportunities`**: pipeline stages + opportunities (full walk, stage history, deleted-opportunity cleanup). Message and contact sync is still in the code (`scope: "full"`) and tested, but not run.
+- The OAuth app needs only `oauth.readonly`, `oauth.write`, `locations.readonly` and `opportunities.readonly`. `opportunities.readonly` is a Sub-Account scope in GHL's scope table, so the agency Private Integration Token still can't read opportunities; the Marketplace app remains the agency-level route.
+- **Home page = Pipeline:**
+  - opportunity counts per canonical stage × sub-account (unmapped stages grouped, not hidden)
+  - Needs Reply / Won / MRR (Won stage count × price setting)
+  - a filterable opportunity list (click any count)
+  - recent stage changes from `stage_history`
+- The Sync page drops the message, contact and conversation columns and the (messages-only) Backfill box.
