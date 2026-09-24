@@ -1,0 +1,63 @@
+{
+  "messages": [
+    {
+      "id": "m1",
+      "direction": "outbound",
+      "status": "delivered",
+      "type": 2,
+      "locationId": "LOC_A_000000000000001",
+      "attachments": [],
+      "body": "hey man, this is Adam I was looking you guys up on Google near Tampa and saw that you don't have a website or anything like that. I know this is kinda random but I went ahead and built you one. Can I send it to you?\njust say \"byebye\" if you want me to stop\nthanks",
+      "contactId": "ct1",
+      "contentType": "text/plain",
+      "conversationId": "conv1",
+      "dateAdded": "2026-09-20T14:00:00.000Z",
+      "dateUpdated": "2026-09-20T14:00:05.000Z",
+      "altId": "SMm1",
+      "from": "+18660000000",
+      "to": "+15550001111",
+      "messageType": "TYPE_SMS",
+      "source": "workflow"
+    },
+    {
+      "id": "m2",
+      "direction": "inbound",
+      "status": "delivered",
+      "type": 2,
+      "locationId": "LOC_A_000000000000001",
+      "attachments": [],
+      "body": "Okay!",
+      "contactId": "ct1",
+      "contentType": "text/plain",
+      "conversationId": "conv1",
+      "dateAdded": "2026-09-20T14:05:00.000Z",
+      "dateUpdated": "2026-09-20T14:05:00.000Z",
+      "altId": "SMm2",
+      "from": "+15550000000",
+      "to": "+15550001111",
+      "messageType": "TYPE_SMS"
+    },
+    {
+      "id": "m3",
+      "direction": "outbound",
+      "status": "undelivered",
+      "type": 2,
+      "locationId": "LOC_A_000000000000001",
+      "attachments": [],
+      "body": "hey man, this is Adam I was looking you guys up on Google near Augusta and saw that you don't have a website or anything like that. I know this is kinda random but I went ahead and built you one. Can I send it to you?\njust say \"byebye\" if you want me to stop\nthanks",
+      "contactId": "ct2",
+      "contentType": "text/plain",
+      "conversationId": "conv2",
+      "dateAdded": "2026-09-20T15:00:00.000Z",
+      "dateUpdated": "2026-09-20T15:00:04.000Z",
+      "altId": "SMm3",
+      "from": "+18660000000",
+      "to": "+15550001111",
+      "messageType": "TYPE_SMS",
+      "source": "workflow",
+      "error": "Error 30007 - Message filtered by carrier."
+    }
+  ],
+  "nextCursor": "cursor-2",
+  "total": 6
+}

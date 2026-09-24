@@ -1,0 +1,33 @@
+{
+  "contact": {
+    "id": "ct3",
+    "locationId": "LOC_A_000000000000001",
+    "firstName": "Gamma",
+    "lastName": "Roofing",
+    "companyName": null,
+    "businessName": null,
+    "city": "Goldsboro",
+    "state": "Florida",
+    "timezone": "America/New_York",
+    "phone": "+15550003456",
+    "tags": [
+      "sms 1"
+    ],
+    "dnd": false,
+    "dndSettings": {},
+    "customFields": [
+      {
+        "id": "cf1",
+        "value": "4.7"
+      }
+    ],
+    "dateAdded": "2026-09-16T12:00:00.000Z",
+    "dateUpdated": "2026-09-19T10:00:00.000Z",
+    "searchAfter": [
+      1,
+      "ct3"
+    ],
+    "country": "US",
+    "type": "lead"
+  }
+}

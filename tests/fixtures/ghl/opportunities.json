@@ -1,0 +1,60 @@
+{
+  "opportunities": [
+    {
+      "id": "op1",
+      "name": "Lead op1",
+      "monetaryValue": 0,
+      "pipelineId": "pipe1",
+      "pipelineStageId": "st0",
+      "status": "open",
+      "source": null,
+      "lastStatusChangeAt": "2026-09-20T14:05:03.000Z",
+      "lastStageChangeAt": "2026-09-20T14:05:03.000Z",
+      "createdAt": "2026-09-20T14:05:03.000Z",
+      "updatedAt": "2026-09-20T14:05:03.000Z",
+      "contactId": "ct1",
+      "locationId": "LOC_A_000000000000001",
+      "customFields": [],
+      "relations": [],
+      "contact": {
+        "id": "ct1"
+      },
+      "sort": [
+        1,
+        "op1"
+      ]
+    },
+    {
+      "id": "op2",
+      "name": "Lead op2",
+      "monetaryValue": 0,
+      "pipelineId": "pipe1",
+      "pipelineStageId": "st4",
+      "status": "open",
+      "source": null,
+      "lastStatusChangeAt": "2026-09-21T16:00:02.000Z",
+      "lastStageChangeAt": "2026-09-21T16:10:00.000Z",
+      "createdAt": "2026-09-21T16:00:02.000Z",
+      "updatedAt": "2026-09-21T16:10:00.000Z",
+      "contactId": "ct4",
+      "locationId": "LOC_A_000000000000001",
+      "customFields": [],
+      "relations": [],
+      "contact": {
+        "id": "ct4"
+      },
+      "sort": [
+        1,
+        "op2"
+      ]
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "startAfterId": "op2",
+    "startAfter": 1,
+    "currentPage": 1,
+    "nextPage": null,
+    "prevPage": null
+  }
+}

@@ -1,0 +1,38 @@
+# Calls the dashboard's sync endpoint every 5 minutes.
+# Vercel Hobby crons can only run once a day, so this is the real scheduler.
+#
+# Repository secrets needed (Settings → Secrets and variables → Actions):
+#   SYNC_URL     e.g. https://your-app.vercel.app   (no trailing slash)
+#   CRON_SECRET  same value as the Vercel env var
+#
+# GitHub may delay scheduled runs by several minutes under load. If you need
+# tighter timing, use cron-job.org instead (see README).
+name: sync-cron
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: sync-cron
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Call /api/cron/sync
+        env:
+          SYNC_URL: ${{ secrets.SYNC_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SYNC_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "SYNC_URL / CRON_SECRET secrets are not set; skipping."
+            exit 0
+          fi
+          code=$(curl -sS -o response.json -w "%{http_code}" --max-time 320 \
+            -H "Authorization: Bearer $CRON_SECRET" "$SYNC_URL/api/cron/sync")
+          cat response.json; echo
+          test "$code" = "200"

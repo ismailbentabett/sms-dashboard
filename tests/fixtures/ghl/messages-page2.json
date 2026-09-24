@@ -1,0 +1,66 @@
+{
+  "messages": [
+    {
+      "id": "m4",
+      "direction": "outbound",
+      "status": "delivered",
+      "type": 2,
+      "locationId": "LOC_A_000000000000001",
+      "attachments": [],
+      "body": "hey man, this is Adam I was looking you guys up on Google near Goldsboro and saw that you don't have a website or anything like that. I know this is kinda random but I went ahead and built you one. Can I send it to you?\njust say \"byebye\" if you want me to stop\nthanks",
+      "contactId": "ct3",
+      "contentType": "text/plain",
+      "conversationId": "conv3",
+      "dateAdded": "2026-09-21T15:00:00.000Z",
+      "dateUpdated": "2026-09-21T15:00:04.000Z",
+      "altId": "SMm4",
+      "from": "+18660000000",
+      "to": "+15550001111",
+      "messageType": "TYPE_SMS",
+      "source": "workflow"
+    },
+    {
+      "id": "bad1",
+      "direction": "sideways"
+    },
+    {
+      "id": "m5",
+      "direction": "outbound",
+      "status": "delivered",
+      "type": 2,
+      "locationId": "LOC_A_000000000000001",
+      "attachments": [],
+      "body": "ignored call",
+      "contactId": "ct3",
+      "contentType": "text/plain",
+      "conversationId": "conv3",
+      "dateAdded": "2026-09-21T15:01:00.000Z",
+      "dateUpdated": "2026-09-21T15:01:00.000Z",
+      "altId": "SMm5",
+      "from": "+18660000000",
+      "to": "+15550001111",
+      "messageType": "TYPE_CALL",
+      "source": "workflow"
+    },
+    {
+      "id": "m6",
+      "direction": "inbound",
+      "status": "delivered",
+      "type": 2,
+      "locationId": "LOC_A_000000000000001",
+      "attachments": [],
+      "body": "STOP",
+      "contactId": "ct4",
+      "contentType": "text/plain",
+      "conversationId": "conv4",
+      "dateAdded": "2026-09-21T16:00:00.000Z",
+      "dateUpdated": "2026-09-21T16:00:00.000Z",
+      "altId": "SMm6",
+      "from": "+15550000000",
+      "to": "+15550001111",
+      "messageType": "TYPE_SMS"
+    }
+  ],
+  "nextCursor": null,
+  "total": 6
+}

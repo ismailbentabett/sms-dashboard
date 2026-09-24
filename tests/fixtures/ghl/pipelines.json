@@ -1,0 +1,111 @@
+{
+  "pipelines": [
+    {
+      "id": "pipe_other",
+      "name": "Some Other Pipeline",
+      "stages": [
+        {
+          "id": "x1",
+          "name": "New",
+          "position": 0
+        }
+      ]
+    },
+    {
+      "id": "pipe1",
+      "name": "SMS Outreach - Remodelers - FB Ads",
+      "stages": [
+        {
+          "id": "st0",
+          "name": "Replied",
+          "position": 0,
+          "showInFunnel": true
+        },
+        {
+          "id": "st1",
+          "name": "Interested - Positive Reply",
+          "position": 1,
+          "showInFunnel": true
+        },
+        {
+          "id": "st2",
+          "name": "Loom Sent",
+          "position": 2,
+          "showInFunnel": true
+        },
+        {
+          "id": "st3",
+          "name": "Follow-up",
+          "position": 3,
+          "showInFunnel": true
+        },
+        {
+          "id": "st4",
+          "name": "Not interested",
+          "position": 4,
+          "showInFunnel": true
+        },
+        {
+          "id": "st5",
+          "name": "Appt Set",
+          "position": 5,
+          "showInFunnel": true
+        },
+        {
+          "id": "st6",
+          "name": "Watched No Reply",
+          "position": 6,
+          "showInFunnel": true
+        },
+        {
+          "id": "st7",
+          "name": "Watching Later",
+          "position": 7,
+          "showInFunnel": true
+        },
+        {
+          "id": "st8",
+          "name": "Call Pushed",
+          "position": 8,
+          "showInFunnel": true
+        },
+        {
+          "id": "st9",
+          "name": "Price Sent",
+          "position": 9,
+          "showInFunnel": true
+        },
+        {
+          "id": "st10",
+          "name": "Follow Up Later",
+          "position": 10,
+          "showInFunnel": true
+        },
+        {
+          "id": "st11",
+          "name": "Needs  Reply",
+          "position": 11,
+          "showInFunnel": true
+        },
+        {
+          "id": "st12",
+          "name": "In Conversation",
+          "position": 12,
+          "showInFunnel": true
+        },
+        {
+          "id": "st13",
+          "name": "Won",
+          "position": 13,
+          "showInFunnel": true
+        },
+        {
+          "id": "st14",
+          "name": "No Response",
+          "position": 14,
+          "showInFunnel": true
+        }
+      ]
+    }
+  ]
+}

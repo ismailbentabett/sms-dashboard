@@ -1,0 +1,103 @@
+{
+  "contacts": [
+    {
+      "id": "ct1",
+      "locationId": "LOC_A_000000000000001",
+      "firstName": "Acme",
+      "lastName": "Remodeling LLC",
+      "companyName": null,
+      "businessName": null,
+      "city": "Tampa",
+      "state": "Florida",
+      "timezone": "America/New_York",
+      "phone": "+15550001234",
+      "tags": [
+        "sms 1"
+      ],
+      "dnd": false,
+      "dndSettings": {},
+      "customFields": [
+        {
+          "id": "cf1",
+          "value": "4.7"
+        }
+      ],
+      "dateAdded": "2026-09-16T12:00:00.000Z",
+      "dateUpdated": "2026-09-20T14:05:01.000Z",
+      "searchAfter": [
+        1,
+        "ct1"
+      ],
+      "country": "US",
+      "type": "lead"
+    },
+    {
+      "id": "ct2",
+      "locationId": "LOC_A_000000000000001",
+      "firstName": "Beta",
+      "lastName": "Builders",
+      "companyName": null,
+      "businessName": null,
+      "city": "Augusta",
+      "state": "Florida",
+      "timezone": "America/New_York",
+      "phone": "+15550002345",
+      "tags": [
+        "sms 1"
+      ],
+      "dnd": false,
+      "dndSettings": {
+        "SMS": {
+          "status": "active",
+          "message": "TWILIO_ERROR_CODE: 30007"
+        }
+      },
+      "customFields": [
+        {
+          "id": "cf1",
+          "value": "4.7"
+        }
+      ],
+      "dateAdded": "2026-09-16T12:00:00.000Z",
+      "dateUpdated": "2026-09-20T15:00:05.000Z",
+      "searchAfter": [
+        1,
+        "ct2"
+      ],
+      "country": "US",
+      "type": "lead"
+    },
+    {
+      "id": "ct4",
+      "locationId": "LOC_A_000000000000001",
+      "firstName": "Delta",
+      "lastName": "Decks",
+      "companyName": null,
+      "businessName": null,
+      "city": "Orlando",
+      "state": "Florida",
+      "timezone": "America/New_York",
+      "phone": "+15550004567",
+      "tags": [
+        "sms 1"
+      ],
+      "dnd": true,
+      "dndSettings": {},
+      "customFields": [
+        {
+          "id": "cf1",
+          "value": "4.7"
+        }
+      ],
+      "dateAdded": "2026-09-16T12:00:00.000Z",
+      "dateUpdated": "2026-09-21T16:00:01.000Z",
+      "searchAfter": [
+        1,
+        "ct4"
+      ],
+      "country": "US",
+      "type": "lead"
+    }
+  ],
+  "total": 3
+}
