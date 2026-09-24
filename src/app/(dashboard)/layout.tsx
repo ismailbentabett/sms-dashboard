@@ -13,7 +13,10 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 // Pages are added to this list as each phase ships.
-const NAV: NavItem[] = [{ href: "/sync", label: "Sync status" }];
+const NAV: NavItem[] = [
+  { href: "/", label: "Pipeline" },
+  { href: "/sync", label: "Sync status" },
+];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const db = getDb();

@@ -44,8 +44,9 @@ One private Marketplace app, installed once at agency level, covers every sub-ac
    - **App type: Private**. Only your agency can see or install it.
    - **Target user / distribution: Agency** (installable by the agency on its sub-accounts). If you see "Agency & Sub-account", pick that.
 3. Open the app, then **Advanced Settings → Auth**:
-   - **Scopes**, select exactly these (all read-only; the two `oauth.*` ones let the agency token list sub-accounts and get their tokens):
-     `oauth.readonly`, `oauth.write`, `locations.readonly`, `locations/customFields.readonly`, `contacts.readonly`, `conversations.readonly`, `conversations/message.readonly`, `opportunities.readonly`
+   - **Scopes**, select exactly these four (the two `oauth.*` ones let the agency token list sub-accounts and get their tokens):
+     `oauth.readonly`, `oauth.write`, `locations.readonly`, `opportunities.readonly`
+     (Conversation analytics later will add `contacts.readonly`, `conversations.readonly` and `conversations/message.readonly`; you'd add them to the app and click Reconnect.)
    - **Redirect URL**: `https://<your-app>.vercel.app/api/ghl/callback`. Also add `http://localhost:3000/api/ghl/callback` for local dev.
    - **Client Keys → Add**: copy the **Client ID** and **Client Secret** (the secret is shown once).
 4. Set the env vars `GHL_CLIENT_ID` and `GHL_CLIENT_SECRET` (§3) and redeploy.
