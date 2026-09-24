@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/db/settings";
 import type { DB } from "@/lib/db/types";
 import type { GhlClient } from "@/lib/ghl/client";
 import { acquireLock, releaseLock } from "./lock";
-import { syncLocation, type LocationRef } from "./location-sync";
+import { syncLocation, type LocationRef, type SyncScope } from "./location-sync";
 
 export interface RunSyncOptions {
   db: DB;
@@ -15,6 +15,8 @@ export interface RunSyncOptions {
   noClientReason?: string;
   kind?: SyncKind;
   locationKeys?: string[];
+  /** What to sync; defaults to opportunities only. */
+  scope?: SyncScope;
   /** Total wall-clock budget for all locations. */
   budgetMs?: number;
   now?: () => Date;
@@ -104,7 +106,7 @@ async function runOne(
   let status: SyncStatus = "error";
   let error: string | null = null;
   try {
-    const result = await syncLocation(db, client, loc, settings, { deadline, now: opts.now });
+    const result = await syncLocation(db, client, loc, settings, { deadline, now: opts.now, scope: opts.scope });
     // Any failed step is an error: "last synced" must only move when the data really is current.
     // "partial" means every step worked but the run stopped early or skipped unparseable records.
     status =

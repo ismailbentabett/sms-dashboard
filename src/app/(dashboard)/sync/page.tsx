@@ -9,7 +9,6 @@ import { oauthConfigFromEnv } from "@/lib/ghl/oauth-config";
 import { Button } from "@/components/ui/button";
 import { setTracking } from "./actions";
 import { getConnectionStatus, getLocationStatuses, getRecentRuns } from "@/lib/queries/sync-status";
-import { BackfillForm } from "./backfill-form";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +99,7 @@ export default async function SyncPage({ searchParams }: PageProps<"/sync">) {
       <Card>
         <CardHeader>
           <CardTitle>Sub-accounts</CardTitle>
-          <CardDescription>Raw row counts in the database and each location&apos;s sync cursors.</CardDescription>
+          <CardDescription>Every sub-account the app is installed on. Only tracked ones are synced and shown.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table className="tabular">
@@ -109,19 +108,15 @@ export default async function SyncPage({ searchParams }: PageProps<"/sync">) {
                 <TableHead>Sub-account</TableHead>
                 <TableHead>Tracking</TableHead>
                 <TableHead>Pipeline</TableHead>
-                <TableHead className="text-right">Contacts</TableHead>
-                <TableHead className="text-right">Conversations</TableHead>
-                <TableHead className="text-right">Messages (in / out)</TableHead>
                 <TableHead className="text-right">Opportunities</TableHead>
                 <TableHead>Last synced</TableHead>
-                <TableHead>Message cursor</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {statuses.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-muted-foreground">
+                  <TableCell colSpan={6} className="text-muted-foreground">
                     No sub-accounts yet. Connect GHL above.
                   </TableCell>
                 </TableRow>
@@ -161,21 +156,9 @@ export default async function SyncPage({ searchParams }: PageProps<"/sync">) {
                         <span className="text-muted-foreground">not found yet</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">{n(s.counts.contacts)}</TableCell>
-                    <TableCell className="text-right">{n(s.counts.conversations)}</TableCell>
-                    <TableCell className="text-right">
-                      {n(s.counts.messages)}{" "}
-                      <span className="text-muted-foreground">
-                        ({n(s.counts.inbound)} / {n(s.counts.outbound)})
-                      </span>
-                    </TableCell>
                     <TableCell className="text-right">{n(s.counts.opportunities)}</TableCell>
                     <TableCell>
                       <RelativeTime date={s.lastSyncedAt} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {fmtTime(s.messagesUpdatedAt)}
-                      {s.backfillFrom && <div className="text-warn">backfill at {fmtTime(s.backfillFrom)}</div>}
                     </TableCell>
                     <TableCell>
                       {s.active && s.installed && <SyncButton locationKeys={[s.key]} label={`Sync ${s.key}`} />}
@@ -185,19 +168,6 @@ export default async function SyncPage({ searchParams }: PageProps<"/sync">) {
               })}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Backfill</CardTitle>
-          <CardDescription>
-            Re-walks all SMS from a date forward (idempotent). Large ranges continue on the next
-            syncs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BackfillForm locationKeys={statuses.filter((s) => s.active && s.installed).map((s) => s.key)} />
         </CardContent>
       </Card>
 
