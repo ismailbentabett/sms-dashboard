@@ -20,16 +20,12 @@ import { GHL_BASE_URL, GhlError, type TokenProvider } from "./client";
  * don't change anything in GHL, so the app stays read-only.
  */
 
-export const OAUTH_SCOPES = [
-  "oauth.readonly",
-  "oauth.write",
-  "locations.readonly",
-  "locations/customFields.readonly",
-  "contacts.readonly",
-  "conversations.readonly",
-  "conversations/message.readonly",
-  "opportunities.readonly",
-] as const;
+/**
+ * Current focus is opportunities. When conversation analytics come back, add
+ * contacts.readonly, conversations.readonly and conversations/message.readonly
+ * here and in the Marketplace app, then reconnect.
+ */
+export const OAUTH_SCOPES = ["oauth.readonly", "oauth.write", "locations.readonly", "opportunities.readonly"] as const;
 
 const AUTHORIZE_URL = "https://marketplace.gohighlevel.com/v2/oauth/chooselocation";
 const CONNECTION_ID = "agency";
