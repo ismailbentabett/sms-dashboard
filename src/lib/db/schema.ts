@@ -221,6 +221,7 @@ export interface SyncCounts {
   messages?: number;
   contacts?: number;
   opportunities?: number;
+  opportunitiesRemoved?: number;
   stages?: number;
   stageChanges?: number;
   contactsFetchedById?: number;

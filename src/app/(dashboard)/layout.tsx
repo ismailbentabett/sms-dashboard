@@ -2,10 +2,12 @@ import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { Nav, type NavItem } from "@/components/layout/nav";
 import { minutesSince, RelativeTime } from "@/components/layout/relative-time";
-import { SyncButton } from "@/components/layout/sync-button";
+import { AutoSync } from "@/components/layout/auto-sync";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { isLocationKey } from "@/lib/config/locations";
 import { getDb } from "@/lib/db/client";
+import { ghlToken } from "@/lib/env";
 import { getLastSynced } from "@/lib/queries/sync-status";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +18,10 @@ const NAV: NavItem[] = [{ href: "/sync", label: "Sync status" }];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const lastSynced = await getLastSynced(getDb()).catch(() => []);
+  // Only locations with a token can sync; the others would never look fresh.
+  const syncable = lastSynced
+    .filter((l) => isLocationKey(l.key) && ghlToken(l.key) !== null)
+    .map((l) => ({ key: l.key, at: l.lastSyncedAt?.toISOString() ?? null }));
   return (
     <div className="flex min-h-dvh">
       <aside className="bg-card hidden w-52 shrink-0 flex-col gap-4 border-r p-3 md:flex">
@@ -46,7 +52,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               })}
             </div>
             <div className="ml-auto flex items-center gap-1">
-              <SyncButton />
+              <AutoSync lastSynced={syncable} />
               <ThemeToggle />
               <form action={logout}>
                 <Button variant="ghost" size="icon" type="submit" aria-label="Sign out">

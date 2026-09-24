@@ -2,13 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
 /**
- * Auth gate. Everything needs a session except /login and the machine
- * endpoints, which check their own secrets (/api/cron/* → CRON_SECRET,
- * /api/ingest/* → INGEST_SECRET).
+ * Auth gate. Everything except /login needs a session.
  */
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  if (pathname === "/login" || pathname.startsWith("/api/cron/") || pathname.startsWith("/api/ingest/")) {
+  if (pathname === "/login") {
     return NextResponse.next();
   }
 

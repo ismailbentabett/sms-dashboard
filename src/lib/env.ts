@@ -10,8 +10,6 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   DASHBOARD_PASSWORD: z.string().min(8, "DASHBOARD_PASSWORD must be at least 8 characters"),
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must be at least 32 characters"),
-  CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters"),
-  INGEST_SECRET: z.string().min(16, "INGEST_SECRET must be at least 16 characters"),
 });
 type EnvKey = keyof z.infer<typeof envSchema>;
 

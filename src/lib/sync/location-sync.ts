@@ -96,6 +96,7 @@ export async function syncLocation(
       messages: 0,
       contacts: 0,
       opportunities: 0,
+      opportunitiesRemoved: 0,
       stages: 0,
       stageChanges: 0,
       contactsFetchedById: 0,
@@ -443,11 +444,32 @@ async function syncOpportunities(ctx: Ctx) {
     ctx.counts.opportunities += rows.length;
 
     const meta = res.meta;
-    if (!meta?.startAfterId || res.opportunities.length < 100 || meta.startAfterId === startAfterId) return;
+    if (!meta?.startAfterId || res.opportunities.length < 100 || meta.startAfterId === startAfterId) {
+      await removeVanishedOpportunities(ctx, seenIds);
+      return;
+    }
     startAfter = meta.startAfter ?? null;
     startAfterId = meta.startAfterId;
   }
   ctx.notes.push(`Opportunity page cap (${MAX_OPPORTUNITY_PAGES}) reached.`);
+}
+
+/**
+ * After a complete walk, anything we still hold for this location that GHL
+ * didn't return was deleted or moved out of the pipeline. Drop it so stage
+ * counts stay accurate. Skipped if the walk returned nothing at all, which
+ * is more likely an API hiccup than an empty pipeline.
+ */
+async function removeVanishedOpportunities(ctx: Ctx, seenIds: Set<string>) {
+  if (seenIds.size === 0) return;
+  const held = await ctx.db
+    .select({ id: opportunities.ghlOpportunityId })
+    .from(opportunities)
+    .where(eq(opportunities.locationKey, ctx.loc.key));
+  const gone = held.map((h) => h.id).filter((id) => !seenIds.has(id));
+  if (!gone.length) return;
+  await ctx.db.delete(opportunities).where(inArray(opportunities.ghlOpportunityId, gone));
+  ctx.counts.opportunitiesRemoved += gone.length;
 }
 
 /** Upsert opportunities and record stage changes. Returns the number of stage_history rows written. */

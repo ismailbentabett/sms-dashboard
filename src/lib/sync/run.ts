@@ -30,15 +30,14 @@ export interface LocationRunSummary {
 export const DEFAULT_BUDGET_MS = 240_000;
 
 /**
- * Run a sync for each active location, one after another. Each location
- * gets an equal share of the remaining budget so one big backfill can't
- * starve the others.
+ * Sync each active location. Locations run in parallel: GHL rate-limits per
+ * location, and each has its own limiter and lock, so this is safe and keeps
+ * the sync-on-open wait short.
  */
 export async function runSync(opts: RunSyncOptions): Promise<LocationRunSummary[]> {
   const { db } = opts;
   const kind = opts.kind ?? "incremental";
-  const started = Date.now();
-  const budget = opts.budgetMs ?? DEFAULT_BUDGET_MS;
+  const deadline = Date.now() + (opts.budgetMs ?? DEFAULT_BUDGET_MS);
   await seedLocations(db);
   const settings = await getSettings(db);
 
@@ -48,15 +47,7 @@ export async function runSync(opts: RunSyncOptions): Promise<LocationRunSummary[
     .where(opts.locationKeys?.length ? inArray(locations.key, opts.locationKeys) : eq(locations.active, true))
     .orderBy(asc(locations.key));
 
-  const results: LocationRunSummary[] = [];
-  for (let i = 0; i < locs.length; i++) {
-    const loc = locs[i];
-    const remaining = budget - (Date.now() - started);
-    const share = remaining / (locs.length - i);
-    const deadline = Date.now() + Math.max(share, 5_000);
-    results.push(await runOne(db, opts, loc, kind, deadline, settings));
-  }
-  return results;
+  return Promise.all(locs.map((loc) => runOne(db, opts, loc, kind, deadline, settings)));
 }
 
 async function runOne(
@@ -109,10 +100,12 @@ async function runOne(
   let error: string | null = null;
   try {
     const result = await syncLocation(db, client, loc, settings, { deadline, now: opts.now });
+    // Any failed step is an error: "last synced" must only move when the data really is current.
+    // "partial" means every step worked but the run stopped early or skipped unparseable records.
     status =
-      result.failedSteps === result.totalSteps
+      result.failedSteps > 0
         ? "error"
-        : result.failedSteps > 0 || result.stoppedEarly || result.counts.parseErrors
+        : result.stoppedEarly || result.counts.parseErrors
           ? "partial"
           : "success";
     error = result.notes.length ? result.notes.join("\n") : null;

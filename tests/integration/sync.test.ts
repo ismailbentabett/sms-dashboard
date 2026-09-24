@@ -139,6 +139,22 @@ describe("sync (fixtures)", () => {
     expect(history[1].changedAt.toISOString()).toBe("2026-09-21T09:00:00.000Z");
   });
 
+  it("drops opportunities that GHL no longer returns", async () => {
+    await sync();
+    ghl.data.opportunities.opportunities = ghl.data.opportunities.opportunities.filter((o) => o.id !== "op2");
+    const [result] = await sync();
+    expect((await db.select().from(opportunities)).map((o) => o.ghlOpportunityId)).toEqual(["op1"]);
+    const [run] = await db.select().from(syncRuns).where(eq(syncRuns.id, result.runId!));
+    expect(run.counts.opportunitiesRemoved).toBe(1);
+  });
+
+  it("keeps opportunities when GHL returns an empty pipeline (likely an API hiccup)", async () => {
+    await sync();
+    ghl.data.opportunities.opportunities = [];
+    await sync();
+    expect(await db.select().from(opportunities)).toHaveLength(2);
+  });
+
   it("never sends a write to GHL", async () => {
     await sync();
     const writes = ghl.requests.filter((r) => r.method !== "GET" && r.path !== "/contacts/search");
@@ -161,11 +177,14 @@ describe("sync (fixtures)", () => {
     expect(again).toMatchObject({ status: "skipped", error: "Another sync is running" });
   });
 
-  it("records a failing step without crashing the run", async () => {
+  it("records a failing step without crashing the run or marking data fresh", async () => {
     ghl.data.pipelines = { pipelines: [] };
     const [result] = await sync();
-    expect(result.status).toBe("partial");
+    expect(result.status).toBe("error");
     expect(result.error).toMatch(/Pipeline .* not found/);
+    // A failed step must not make the data look fresh.
+    const [cursor] = await db.select().from(syncCursors).where(eq(syncCursors.locationKey, "A"));
+    expect(cursor.lastSyncedAt).toBeNull();
     // Messages still synced even though the pipeline step failed.
     expect(await db.select().from(messages)).toHaveLength(5);
   });

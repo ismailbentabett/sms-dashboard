@@ -29,9 +29,16 @@ Choices made where the spec was ambiguous or where the docs or live API differed
 - **Late status changes.** The export may filter `startDate` on creation date rather than update date (not documented). So every 6 hours the incremental walk reaches back 48 h to pick up delivery statuses that settled late. The normal overlap is 10 minutes, per the spec.
 - **First sync reaches back `initial_sync_days` (default 60).** Change it in `settings`, or use Backfill.
 - **Backfill** sets `sync_cursors.backfill_from`. Each run walks forward from it until it reaches the present, then clears it, so large backfills continue across scheduled runs. There's a CLI: `npm run sync -- --backfill 2026-09-01 --budget 900`.
-- **Time budget.** Each cron run budgets 240 s (Vercel Hobby max is 300 s), split evenly across the locations still to run. Page caps per step are a second guard.
-- **Scheduling on Hobby.** `vercel.json` has a once-daily cron (the Hobby maximum) as a fallback; `.github/workflows/sync-cron.yml` calls the endpoint every 5 minutes.
-- **Manual sync** goes through `POST /api/sync` (session cookie + same-origin check) rather than a server action, so the header button works on every page with one `maxDuration`.
+- **Time budget.** Each sync budgets 240 s (Vercel Hobby max is 300 s). Page caps per step are a second guard.
+- **Sync runs through `POST /api/sync`** (session cookie + same-origin check) rather than a server action, so the header works on every page with one `maxDuration`.
+
+## Phase 1b: sync on open instead of background jobs (your call)
+
+- **No cron, scheduler or webhooks for now.** Removed `vercel.json`, the GitHub Actions scheduler, `/api/cron/sync`, `CRON_SECRET` and `INGEST_SECRET`.
+- **Sync on open.** The dashboard renders from the database immediately. If any location with a token was last synced more than 60 s ago, the header component (`AutoSync`) calls `POST /api/sync` and refreshes the page when it finishes. It checks again when the tab becomes visible. There is no polling while the tab is open.
+- **Locations sync in parallel.** GHL rate-limits per location, and each location has its own limiter and lock, so this is safe and cuts the wait about 4x.
+- **"Last synced" is honest.** Any failed step marks the run `error`, and only `success`/`partial` runs move `last_synced_at`. (Before this change, a run where every GHL call failed was marked `partial` and looked fresh.) `partial` now only means every step worked but the run stopped at its time budget or skipped unparseable records.
+- **Deleted opportunities are removed.** After a complete pipeline walk, opportunities GHL no longer returns (deleted or moved out of the pipeline) are deleted locally, so stage counts don't drift. If the walk returns nothing at all, nothing is deleted, since that's more likely an API hiccup.
 - **shadcn/ui components were written by hand** (`src/components/ui/*`, same code the CLI generates) because the shadcn registry is unreachable from the build container. `components.json` is present so `npx shadcn add …` works on your machine.
 - **No Google Fonts**: system font stack, so builds don't depend on fonts.googleapis.com.
 - **Dark mode** follows the OS by default; the header toggle overrides it (stored in localStorage).

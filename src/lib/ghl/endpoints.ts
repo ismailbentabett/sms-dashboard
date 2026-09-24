@@ -27,7 +27,7 @@ export function getPipelines(client: GhlClient) {
 /**
  * GET /conversations/messages/export — Version 2021-04-15.
  * Location-wide message list. `limit` must be ≥ 10. The `cursor` is only
- * valid for 2 minutes, so it can't be carried between cron runs.
+ * valid for 2 minutes, so it can't be carried between sync runs.
  */
 export function exportMessages(
   client: GhlClient,

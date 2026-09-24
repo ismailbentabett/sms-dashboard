@@ -71,8 +71,6 @@ All are server-only; none are exposed to the browser.
 | `GHL_TOKEN_A` … `GHL_TOKEN_D` | per location | Private Integration Tokens (§2) |
 | `DASHBOARD_PASSWORD` | yes | Login password, ≥ 8 chars |
 | `SESSION_SECRET` | yes | ≥ 32 chars; signs the session cookie. `openssl rand -base64 48` |
-| `CRON_SECRET` | yes | ≥ 16 chars; the scheduler sends `Authorization: Bearer <CRON_SECRET>` |
-| `INGEST_SECRET` | Phase 4 | ≥ 16 chars; protects the GHL webhook endpoint |
 
 Changing `SESSION_SECRET` logs you out everywhere.
 
@@ -89,32 +87,19 @@ Changing `SESSION_SECRET` logs you out everywhere.
 3. Deploy, then run `npm run db:migrate` once against the production `DATABASE_URL`.
 4. Open the site, log in, go to **Sync status**, click **Sync all now**.
 
-The first sync of each location reads the last 60 days of SMS (`initial_sync_days` setting). For older history use **Backfill** on `/sync`. Big ranges continue automatically on the following scheduled runs.
+The first sync of each location reads the last 60 days of SMS (`initial_sync_days` setting). For older history use **Backfill** on `/sync`. Big ranges continue on the following syncs.
 
-## 6. Scheduling the sync every 5 minutes
+## 6. How data stays current
 
-The Hobby plan only allows Vercel Cron jobs to run **once per day** (a job may fire any time within its scheduled hour), and functions time out at **300 s**. So:
+There are no background jobs yet. When you open the dashboard (or come back to the tab), the page renders straight away from the database. If any location's data is more than a minute old, the header shows **Updating from GHL…**, a sync runs for all 4 locations in parallel, and the page refreshes when it finishes. A normal incremental sync takes a few seconds. **Sync now** in the header forces one at any time.
 
-- `vercel.json` runs `/api/cron/sync` once a day as a fallback. Vercel sends the `CRON_SECRET` header automatically.
-- **The real 5-minute schedule is `.github/workflows/sync-cron.yml`.** In the GitHub repo go to **Settings → Secrets and variables → Actions** and add:
-  - `SYNC_URL` = `https://<your-app>.vercel.app` (no trailing slash)
-  - `CRON_SECRET` = same value as in Vercel
+Only runs whose steps all succeeded move a location's "last synced" time, so the header never claims fresh data after a failed sync. If a sync fails, the header shows the reason and `/sync` lists the details.
 
-  Check **Actions → sync-cron** for runs; you can also trigger it by hand ("Run workflow").
+The very first sync of a location reads 60 days of SMS and can take up to a minute. If it hits the 240 s budget, it stops cleanly and the next sync continues where it left off.
 
-GitHub can delay scheduled workflows by several minutes at busy times. If that matters, use **cron-job.org** instead (free):
+## 7. Later: background sync and webhooks
 
-- URL: `https://<your-app>.vercel.app/api/cron/sync`, method GET, every 5 minutes
-- Header: `Authorization: Bearer <CRON_SECRET>`
-- Request timeout: 300 s
-
-Each run processes the locations one after another within a 240 s budget. Only one sync per location can run at a time (a lease lock), so overlapping triggers are harmless. They show as *skipped*.
-
-With a Pro plan you can change `vercel.json` to `*/5 * * * *` and drop the GitHub workflow.
-
-## 7. GHL webhooks (Phase 4)
-
-Real-time updates via GHL workflow webhooks arrive in Phase 4, with step-by-step setup in `docs/ghl-webhook-setup.md`. Polling stays the source of truth; the dashboard is correct without webhooks.
+A scheduled sync (Vercel Hobby cron only runs daily, so it would need an external scheduler) and GHL workflow webhooks are deferred. The sync code is already idempotent and lock-protected, so adding a scheduler later is just a route that calls `runSync`.
 
 ## Project layout
 
@@ -125,8 +110,7 @@ src/
     login/                       password login (server action)
     (dashboard)/                 authenticated pages (sidebar + header)
       sync/                      Sync status page
-    api/cron/sync/               scheduled sync (CRON_SECRET)
-    api/sync/                    manual sync / backfill (session)
+    api/sync/                    sync-on-open, manual sync, backfill (session)
   components/ui/                 shadcn/ui components
   components/layout/             nav, header widgets
   lib/
