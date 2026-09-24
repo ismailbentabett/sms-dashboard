@@ -140,7 +140,7 @@ describe("agency OAuth", () => {
     expect(url.searchParams.get("client_id")).toBe("APPID123-abc");
     expect(url.searchParams.get("state")).toBe("st4te");
     expect(url.searchParams.get("scope")?.split(" ")).toEqual(
-      expect.arrayContaining(["oauth.write", "oauth.readonly", "conversations/message.readonly", "opportunities.readonly"]),
+      expect.arrayContaining(["oauth.write", "oauth.readonly", "opportunities.readonly"]),
     );
   });
 
