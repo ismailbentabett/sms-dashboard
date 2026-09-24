@@ -29,6 +29,14 @@ const MAX_CONTACT_PAGES = 40;
 const MAX_OPPORTUNITY_PAGES = 50;
 const MAX_CONTACTS_BY_ID = 50;
 
+/**
+ * "opportunities": pipeline stages + opportunities only (current focus; needs
+ * only `opportunities.readonly`). "full": also messages and contacts, for
+ * the conversation analytics that come later.
+ */
+export type SyncScope = "opportunities" | "full";
+export const DEFAULT_SYNC_SCOPE: SyncScope = "opportunities";
+
 export interface LocationRef {
   key: string;
   ghlLocationId: string;
@@ -83,7 +91,7 @@ export async function syncLocation(
   client: GhlClient,
   loc: LocationRef,
   settings: Settings,
-  opts: { deadline: number; now?: () => Date },
+  opts: { deadline: number; now?: () => Date; scope?: SyncScope },
 ): Promise<LocationSyncResult> {
   const ctx: Ctx = {
     db,
@@ -109,11 +117,16 @@ export async function syncLocation(
 
   await db.insert(syncCursors).values({ locationKey: loc.key }).onConflictDoNothing();
 
+  const full = (opts.scope ?? DEFAULT_SYNC_SCOPE) === "full";
   const steps: [string, () => Promise<void>][] = [
     ["pipeline", () => syncPipeline(ctx)],
-    ["messages", () => syncMessages(ctx)],
-    ["contacts", () => syncContacts(ctx)],
-    ["missing contacts", () => fetchMissingContacts(ctx)],
+    ...(full
+      ? ([
+          ["messages", () => syncMessages(ctx)],
+          ["contacts", () => syncContacts(ctx)],
+          ["missing contacts", () => fetchMissingContacts(ctx)],
+        ] as [string, () => Promise<void>][])
+      : []),
     ["opportunities", () => syncOpportunities(ctx)],
   ];
   let failedSteps = 0;

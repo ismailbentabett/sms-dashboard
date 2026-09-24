@@ -37,11 +37,14 @@ async function seedLocations() {
     .onConflictDoNothing();
 }
 
+let scope: "full" | "opportunities" = "full";
+
 async function sync(keys?: string[]) {
   await seedLocations();
   return runSync({
     db,
     locationKeys: keys ?? ["A"],
+    scope,
     now: () => NOW,
     clientFor: (loc) => {
       if (loc.key !== "A") return null;
@@ -71,6 +74,7 @@ async function snapshot() {
 }
 
 beforeEach(async () => {
+  scope = "full";
   ({ db, close } = await createTestDb());
   ghl = fakeGhl();
 });
@@ -165,6 +169,15 @@ describe("sync (fixtures)", () => {
     ghl.data.opportunities.opportunities = [];
     await sync();
     expect(await db.select().from(opportunities)).toHaveLength(2);
+  });
+
+  it("opportunities-only scope touches just pipelines and opportunities", async () => {
+    scope = "opportunities";
+    const [result] = await sync();
+    expect(result.status).toBe("success");
+    expect(new Set(ghl.requests.map((r) => r.path))).toEqual(new Set(["/opportunities/pipelines", "/opportunities/search"]));
+    expect(await db.select().from(opportunities)).toHaveLength(2);
+    expect(await db.select().from(messages)).toHaveLength(0);
   });
 
   it("never sends a write to GHL", async () => {
