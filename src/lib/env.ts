@@ -1,6 +1,5 @@
 import "server-only";
 import { z } from "zod";
-import type { LocationKey } from "@/lib/config/locations";
 
 /**
  * Server-only environment access. Values are read lazily so `next build`
@@ -19,10 +18,4 @@ export function requireEnv(key: EnvKey): string {
     throw new Error(`Missing or invalid env var ${key}: ${result.error.issues[0]?.message ?? "invalid"}`);
   }
   return result.data;
-}
-
-/** GHL Private Integration Token for a location, or null if not configured yet. */
-export function ghlToken(key: LocationKey): string | null {
-  const v = process.env[`GHL_TOKEN_${key}`]?.trim();
-  return v ? v : null;
 }

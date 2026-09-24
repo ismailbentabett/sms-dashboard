@@ -44,8 +44,16 @@ export interface GhlClientStats {
   dailyRemaining: number | null;
 }
 
+/** Supplies an access token and can be told the current one was rejected. */
+export interface TokenProvider {
+  get(): Promise<string>;
+  /** Drop the cached token so the next get() fetches a new one. */
+  invalidate(): Promise<void>;
+}
+
 export interface GhlClientOptions {
-  token: string;
+  /** A fixed token, or a provider for tokens that expire (OAuth location tokens). */
+  token: string | TokenProvider;
   locationId: string;
   fetchImpl?: typeof fetch;
   clock?: Clock;
@@ -60,7 +68,7 @@ type Query = Record<string, string | number | boolean | null | undefined>;
 export class GhlClient {
   readonly locationId: string;
   readonly stats: GhlClientStats = { requests: 0, rateLimitHits: 0, retries: 0, dailyRemaining: null };
-  private readonly token: string;
+  private readonly tokens: TokenProvider;
   private readonly fetchImpl: typeof fetch;
   private readonly clock: Clock;
   private readonly limiter: RateLimiter;
@@ -69,7 +77,9 @@ export class GhlClient {
   private readonly random: () => number;
 
   constructor(opts: GhlClientOptions) {
-    this.token = opts.token;
+    const fixed = opts.token;
+    this.tokens =
+      typeof fixed === "string" ? { get: async () => fixed, invalidate: async () => undefined } : fixed;
     this.locationId = opts.locationId;
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.clock = opts.clock ?? realClock;
@@ -109,7 +119,9 @@ export class GhlClient {
       if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
     }
 
+    let refreshedToken = false;
     for (let attempt = 0; ; attempt++) {
+      const token = await this.tokens.get();
       await this.limiter.acquire();
       this.stats.requests++;
       let res: Response;
@@ -117,7 +129,7 @@ export class GhlClient {
         res = await this.fetchImpl(url, {
           method,
           headers: {
-            Authorization: `Bearer ${this.token}`,
+            Authorization: `Bearer ${token}`,
             Version: version,
             Accept: "application/json",
             ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
@@ -137,6 +149,13 @@ export class GhlClient {
 
       const { dailyRemaining } = this.limiter.observeHeaders(res.headers);
       if (dailyRemaining !== null) this.stats.dailyRemaining = dailyRemaining;
+
+      // An expired or revoked OAuth token: get a fresh one and retry once.
+      if (res.status === 401 && !refreshedToken) {
+        refreshedToken = true;
+        await this.tokens.invalidate();
+        continue;
+      }
 
       if (res.status === 429) {
         this.stats.rateLimitHits++;

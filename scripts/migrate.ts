@@ -1,10 +1,9 @@
-/** Apply migrations and seed the 4 locations. Usage: npm run db:migrate */
+/** Apply migrations. Usage: npm run db:migrate */
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import * as schema from "@/lib/db/schema";
-import { seedLocations } from "@/lib/db/seed";
 
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -12,9 +11,8 @@ async function main() {
   const pool = new Pool({ connectionString: url, max: 1 });
   const db = drizzle(pool, { schema });
   await migrate(db, { migrationsFolder: "drizzle" });
-  await seedLocations(db);
   await pool.end();
-  console.log("Migrations applied and locations seeded.");
+  console.log("Migrations applied.");
 }
 
 main().catch((err) => {

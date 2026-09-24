@@ -26,10 +26,22 @@ let ghl: ReturnType<typeof fakeGhl>;
 
 const NOW = new Date("2026-09-22T12:00:00.000Z");
 
-function sync(keys = ["A"]) {
+async function seedLocations() {
+  await db
+    .insert(locations)
+    .values([
+      { key: "A", name: "A: Website + Normal SMS", ghlLocationId: "LOC_A_000000000000001" },
+      { key: "B", name: "B: Website + Loom SMS", ghlLocationId: "LOC_B_000000000000002" },
+      { key: "Z", name: "Unrelated client", ghlLocationId: "LOC_Z", active: false },
+    ])
+    .onConflictDoNothing();
+}
+
+async function sync(keys?: string[]) {
+  await seedLocations();
   return runSync({
     db,
-    locationKeys: keys,
+    locationKeys: keys ?? ["A"],
     now: () => NOW,
     clientFor: (loc) => {
       if (loc.key !== "A") return null;
@@ -168,9 +180,16 @@ describe("sync (fixtures)", () => {
     expect(req?.query).not.toHaveProperty("location_id");
   });
 
-  it("skips locations without a token and locations that are already syncing", async () => {
+  it("syncs only tracked, installed locations by default", async () => {
+    await seedLocations();
+    await db.update(locations).set({ installed: false }).where(eq(locations.key, "B"));
+    const results = await runSync({ db, clientFor: () => null, now: () => NOW });
+    expect(results.map((r) => r.locationKey)).toEqual(["A"]);
+  });
+
+  it("skips locations without a client and locations that are already syncing", async () => {
     const results = await sync(["A", "B"]);
-    expect(results.find((r) => r.locationKey === "B")).toMatchObject({ status: "skipped" });
+    expect(results.find((r) => r.locationKey === "B")).toMatchObject({ status: "skipped", error: "GHL is not connected" });
 
     await acquireLock(db, "A", "someone-else", 60_000);
     const [again] = await sync(["A"]);

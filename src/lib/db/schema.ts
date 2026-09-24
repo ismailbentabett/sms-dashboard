@@ -24,6 +24,11 @@ export type TemplateCategory = "first_text" | "fu1" | "fu2" | "post_loom" | "loo
 export type SyncKind = "incremental" | "backfill" | "targeted";
 export type SyncStatus = "running" | "success" | "partial" | "error" | "skipped";
 
+/**
+ * Sub-accounts, discovered from the agency app installation. `key` is the
+ * short label used across the UI ("A", "B", …; taken from a "A: …" name
+ * prefix when there is one). `active` = tracked by the dashboard.
+ */
 export const locations = pgTable("locations", {
   key: text("key").primaryKey(),
   name: text("name").notNull(),
@@ -31,6 +36,37 @@ export const locations = pgTable("locations", {
   pipelineId: text("pipeline_id"),
   timezoneDefault: text("timezone_default"),
   active: boolean("active").notNull().default(true),
+  /** Set when the user turns tracking on/off by hand; discovery then leaves `active` alone. */
+  activeSetManually: boolean("active_set_manually").notNull().default(false),
+  /** False when the app is no longer installed on this sub-account. */
+  installed: boolean("installed").notNull().default(true),
+  discoveredAt: ts("discovered_at").defaultNow(),
+});
+
+/**
+ * The agency-level OAuth connection (one row, id = "agency"). Tokens are
+ * AES-GCM encrypted with a key derived from SESSION_SECRET.
+ */
+export const ghlConnection = pgTable("ghl_connection", {
+  id: text("id").primaryKey(),
+  companyId: text("company_id").notNull(),
+  accessTokenEnc: text("access_token_enc").notNull(),
+  refreshTokenEnc: text("refresh_token_enc").notNull(),
+  expiresAt: ts("expires_at").notNull(),
+  scope: text("scope"),
+  userId: text("user_id"),
+  /** Location ids GHL reported as approved at install time (fallback for discovery). */
+  approvedLocations: text("approved_locations").array(),
+  connectedAt: ts("connected_at").notNull().defaultNow(),
+  locationsDiscoveredAt: ts("locations_discovered_at"),
+  lastError: text("last_error"),
+});
+
+/** Short-lived sub-account tokens minted from the agency token (valid ~24 h). */
+export const ghlLocationTokens = pgTable("ghl_location_tokens", {
+  ghlLocationId: text("ghl_location_id").primaryKey(),
+  accessTokenEnc: text("access_token_enc").notNull(),
+  expiresAt: ts("expires_at").notNull(),
 });
 
 export const stages = pgTable(

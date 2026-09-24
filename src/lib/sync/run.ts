@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { locations, syncCursors, syncRuns, type SyncKind, type SyncStatus } from "@/lib/db/schema";
-import { seedLocations } from "@/lib/db/seed";
 import { getSettings } from "@/lib/db/settings";
 import type { DB } from "@/lib/db/types";
 import type { GhlClient } from "@/lib/ghl/client";
@@ -10,8 +9,10 @@ import { syncLocation, type LocationRef } from "./location-sync";
 
 export interface RunSyncOptions {
   db: DB;
-  /** Returns a client for the location, or null when its token isn't configured. */
+  /** Returns a client for the location, or null when GHL isn't connected. */
   clientFor: (loc: LocationRef & { key: string }) => GhlClient | null;
+  /** Why clientFor returned null, shown on skipped runs. */
+  noClientReason?: string;
   kind?: SyncKind;
   locationKeys?: string[];
   /** Total wall-clock budget for all locations. */
@@ -38,13 +39,17 @@ export async function runSync(opts: RunSyncOptions): Promise<LocationRunSummary[
   const { db } = opts;
   const kind = opts.kind ?? "incremental";
   const deadline = Date.now() + (opts.budgetMs ?? DEFAULT_BUDGET_MS);
-  await seedLocations(db);
   const settings = await getSettings(db);
 
   const locs = await db
     .select()
     .from(locations)
-    .where(opts.locationKeys?.length ? inArray(locations.key, opts.locationKeys) : eq(locations.active, true))
+    .where(
+      and(
+        eq(locations.installed, true),
+        opts.locationKeys?.length ? inArray(locations.key, opts.locationKeys) : eq(locations.active, true),
+      ),
+    )
     .orderBy(asc(locations.key));
 
   return Promise.all(locs.map((loc) => runOne(db, opts, loc, kind, deadline, settings)));
@@ -68,10 +73,10 @@ async function runOne(
         status: "skipped",
         startedAt: new Date(),
         finishedAt: new Date(),
-        error: `GHL_TOKEN_${loc.key} is not set`,
+        error: opts.noClientReason ?? "GHL is not connected",
       })
       .returning({ id: syncRuns.id });
-    return { locationKey: loc.key, status: "skipped", runId: run.id, error: `GHL_TOKEN_${loc.key} is not set` };
+    return { locationKey: loc.key, status: "skipped", runId: run.id, error: opts.noClientReason ?? "GHL is not connected" };
   }
 
   const holder = randomUUID();

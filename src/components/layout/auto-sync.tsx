@@ -46,11 +46,13 @@ export function AutoSync({ lastSynced }: Props) {
       });
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;
+        problem?: string | null;
         results?: { locationKey: string; status: string; error: string | null }[];
       };
       const failed = body.results?.filter((r) => r.status === "error") ?? [];
       const partial = body.results?.filter((r) => r.status === "partial") ?? [];
       if (!res.ok) setState({ kind: "error", message: body.error ?? `Sync failed (${res.status})` });
+      else if (body.problem && !body.results?.length) setState({ kind: "error", message: body.problem });
       else if (failed.length)
         setState({
           kind: "error",

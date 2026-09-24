@@ -5,10 +5,9 @@ import { minutesSince, RelativeTime } from "@/components/layout/relative-time";
 import { AutoSync } from "@/components/layout/auto-sync";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { isLocationKey } from "@/lib/config/locations";
 import { getDb } from "@/lib/db/client";
-import { ghlToken } from "@/lib/env";
-import { getLastSynced } from "@/lib/queries/sync-status";
+import { getConnectionStatus, getLastSynced } from "@/lib/queries/sync-status";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +16,13 @@ export const dynamic = "force-dynamic";
 const NAV: NavItem[] = [{ href: "/sync", label: "Sync status" }];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const lastSynced = await getLastSynced(getDb()).catch(() => []);
-  // Only locations with a token can sync; the others would never look fresh.
-  const syncable = lastSynced
-    .filter((l) => isLocationKey(l.key) && ghlToken(l.key) !== null)
-    .map((l) => ({ key: l.key, at: l.lastSyncedAt?.toISOString() ?? null }));
+  const db = getDb();
+  const [allLocations, connection] = await Promise.all([
+    getLastSynced(db).catch(() => []),
+    getConnectionStatus(db).catch(() => null),
+  ]);
+  const tracked = allLocations.filter((l) => l.active && l.installed);
+  const syncable = connection ? tracked.map((l) => ({ key: l.key, at: l.lastSyncedAt?.toISOString() ?? null })) : [];
   return (
     <div className="flex min-h-dvh">
       <aside className="bg-card hidden w-52 shrink-0 flex-col gap-4 border-r p-3 md:flex">
@@ -35,7 +36,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <Nav items={NAV} orientation="horizontal" />
             </div>
             <div className="tabular flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-              {lastSynced.map((l) => {
+              {!connection && (
+                <Link href="/sync" className="text-warn font-medium underline-offset-2 hover:underline">
+                  GHL not connected
+                </Link>
+              )}
+              {tracked.map((l) => {
                 const mins = minutesSince(l.lastSyncedAt);
                 return (
                   <span key={l.key} className="inline-flex items-center gap-1">
@@ -52,7 +58,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               })}
             </div>
             <div className="ml-auto flex items-center gap-1">
-              <AutoSync lastSynced={syncable} />
+              {connection && <AutoSync lastSynced={syncable} />}
               <ThemeToggle />
               <form action={logout}>
                 <Button variant="ghost" size="icon" type="submit" aria-label="Sign out">

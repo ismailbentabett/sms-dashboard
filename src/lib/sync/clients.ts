@@ -1,11 +1,10 @@
 import "server-only";
-import { isLocationKey } from "@/lib/config/locations";
-import { ghlToken } from "@/lib/env";
+import type { DB } from "@/lib/db/types";
 import { GhlClient } from "@/lib/ghl/client";
+import { locationTokenProvider, type OAuthConfig } from "@/lib/ghl/oauth";
 
-/** Build a GHL client for a location from its GHL_TOKEN_<KEY> env var. */
-export function clientFromEnv(loc: { key: string; ghlLocationId: string }): GhlClient | null {
-  if (!isLocationKey(loc.key)) return null;
-  const token = ghlToken(loc.key);
-  return token ? new GhlClient({ token, locationId: loc.ghlLocationId }) : null;
+/** GHL client for a sub-account, authenticated with a Location token minted from the agency connection. */
+export function oauthClientFactory(db: DB, cfg: OAuthConfig) {
+  return (loc: { ghlLocationId: string }) =>
+    new GhlClient({ token: locationTokenProvider(db, cfg, loc.ghlLocationId), locationId: loc.ghlLocationId });
 }

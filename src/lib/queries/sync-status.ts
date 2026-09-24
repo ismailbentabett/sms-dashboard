@@ -1,5 +1,5 @@
 import { asc, desc, sql } from "drizzle-orm";
-import { locations, syncCursors, syncRuns } from "@/lib/db/schema";
+import { ghlConnection, locations, syncCursors, syncRuns } from "@/lib/db/schema";
 import type { DB } from "@/lib/db/types";
 import { rowsOf } from "@/lib/sync/lock";
 
@@ -8,6 +8,8 @@ export interface LocationStatus {
   name: string;
   ghlLocationId: string;
   pipelineId: string | null;
+  active: boolean;
+  installed: boolean;
   lastSyncedAt: Date | null;
   messagesUpdatedAt: Date | null;
   contactsUpdatedAt: Date | null;
@@ -27,7 +29,12 @@ export interface LocationStatus {
 /** Header strip: last sync time per location. */
 export async function getLastSynced(db: DB) {
   return db
-    .select({ key: locations.key, lastSyncedAt: syncCursors.lastSyncedAt })
+    .select({
+      key: locations.key,
+      lastSyncedAt: syncCursors.lastSyncedAt,
+      active: locations.active,
+      installed: locations.installed,
+    })
     .from(locations)
     .leftJoin(syncCursors, sql`${syncCursors.locationKey} = ${locations.key}`)
     .orderBy(asc(locations.key));
@@ -40,6 +47,8 @@ export async function getLocationStatuses(db: DB): Promise<LocationStatus[]> {
       name: locations.name,
       ghlLocationId: locations.ghlLocationId,
       pipelineId: locations.pipelineId,
+      active: locations.active,
+      installed: locations.installed,
       lastSyncedAt: syncCursors.lastSyncedAt,
       messagesUpdatedAt: syncCursors.messagesUpdatedAt,
       contactsUpdatedAt: syncCursors.contactsUpdatedAt,
@@ -87,4 +96,19 @@ export async function getLocationStatuses(db: DB): Promise<LocationStatus[]> {
 
 export async function getRecentRuns(db: DB, limit = 40) {
   return db.select().from(syncRuns).orderBy(desc(syncRuns.startedAt), desc(syncRuns.id)).limit(limit);
+}
+
+/** Agency connection summary for the UI (no secrets). */
+export async function getConnectionStatus(db: DB) {
+  const [row] = await db
+    .select({
+      companyId: ghlConnection.companyId,
+      connectedAt: ghlConnection.connectedAt,
+      expiresAt: ghlConnection.expiresAt,
+      scope: ghlConnection.scope,
+      locationsDiscoveredAt: ghlConnection.locationsDiscoveredAt,
+      lastError: ghlConnection.lastError,
+    })
+    .from(ghlConnection);
+  return row ?? null;
 }

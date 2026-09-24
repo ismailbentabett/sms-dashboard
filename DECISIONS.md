@@ -44,3 +44,20 @@ Choices made where the spec was ambiguous or where the docs or live API differed
 - **Dark mode** follows the OS by default; the header toggle overrides it (stored in localStorage).
 - **Ids as primary keys.** GHL ids are the PKs for contacts, conversations, messages, opportunities and stages, so upserts are naturally idempotent. Rows have no "synced at" column, so re-running a sync leaves them byte-identical (tested).
 - **Enums as `text`** with TypeScript unions instead of Postgres enums: easier migrations when GHL adds statuses.
+
+## Phase 1c: agency-level GHL access (your call: "find an agency-level solution")
+
+- **Why not an agency Private Integration Token:** the data endpoints (`/conversations/*`, `/contacts/*`, `/opportunities/*`) only accept sub-account tokens (OpenAPI `security: bearer` = "Sub-Account token"). Agency PITs don't offer those scopes or `oauth.write`, so they can't read or create sub-account tokens.
+- **What we do instead: a private Marketplace app with OAuth.** The agency admin installs it once. We exchange the code with `user_type=Company` (`POST /oauth/token`), mint a sub-account token per location with `POST /oauth/locationToken` (scope `oauth.write`, Version 2021-07-28, ~24 h lifetime), and list installs with `GET /oauth/installedLocations` (scope `oauth.readonly`, needs `companyId` + `appId`).
+- **Still read-only.** The two POSTs only issue tokens; nothing in GHL changes. The data client's POST allowlist is unchanged (`/contacts/search` only).
+- **Token storage:** Company access and refresh tokens and cached location tokens live in Postgres, AES-256-GCM encrypted with a key derived (HKDF) from `SESSION_SECRET`. No new secret to manage; rotating `SESSION_SECRET` requires a Reconnect.
+- **Refresh safety:** GHL rotates the refresh token on every use, so the refresh runs under `SELECT … FOR UPDATE` on the connection row. A second concurrent refresher waits, then reuses the new token. A failed refresh is recorded in `ghl_connection.last_error` and shown on `/sync` with a Reconnect button.
+- **401 handling:** the data client drops its cached location token on a 401 and retries once. Minting a location token that gets a 401 forces a Company refresh and retries once.
+- **appId** is derived from the Client ID (the part before the first `-`, GHL's format); `GHL_APP_ID` overrides it. If `installedLocations` fails, discovery falls back to the `approvedLocations` GHL returned at install time.
+- **Sub-accounts are discovered, not hard-coded.** The seed of the 4 sub-accounts is gone. Discovery runs on connect, then at most every 10 minutes on sync (or on "Re-check sub-accounts").
+  - A new sub-account gets its key from a `"A: …"` name prefix (else the next free letter).
+  - It's tracked only if it has the outreach pipeline, so other agency clients are listed but ignored.
+  - One the app was removed from is marked `installed = false` and skipped.
+  - An empty install list is ignored rather than treated as "uninstalled everywhere".
+  - A manual Track/Ignore choice is never overridden.
+- **Callback CSRF:** the Connect button sets a 15-minute httpOnly state cookie; the callback requires it (and a matching `state` if GHL echoes it). Installs must therefore start from the dashboard's Connect button.

@@ -1,20 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { LOCATION_KEYS } from "@/lib/config/locations";
 import { getDb } from "@/lib/db/client";
-import { clientFromEnv } from "@/lib/sync/clients";
-import { requestBackfill, runSync } from "@/lib/sync/run";
+import { runDashboardSync } from "@/lib/sync/service";
 
 export const maxDuration = 300;
 
 const bodySchema = z.object({
-  locationKeys: z.array(z.enum(LOCATION_KEYS)).optional(),
+  locationKeys: z.array(z.string().min(1).max(8)).optional(),
   backfillFrom: z.iso.date().optional(),
+  forceDiscover: z.boolean().optional(),
 });
 
 /**
- * Manual "Sync now" / "Backfill from date". Session-protected by the proxy;
- * the same-origin check stops cross-site form posts riding the cookie.
+ * Sync-on-open, "Sync now" and "Backfill from date". Session-protected by
+ * the proxy; the same-origin check stops cross-site posts riding the cookie.
  */
 export async function POST(request: NextRequest) {
   const site = request.headers.get("sec-fetch-site");
@@ -27,14 +26,11 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "invalid body" }, { status: 400 });
   }
-  const db = getDb();
-  const { locationKeys, backfillFrom } = parsed.data;
-  if (backfillFrom) await requestBackfill(db, new Date(`${backfillFrom}T00:00:00Z`), locationKeys);
-  const results = await runSync({
-    db,
-    clientFor: clientFromEnv,
-    kind: backfillFrom ? "backfill" : "incremental",
+  const { locationKeys, backfillFrom, forceDiscover } = parsed.data;
+  const result = await runDashboardSync(getDb(), {
     locationKeys,
+    forceDiscover,
+    backfillFrom: backfillFrom ? new Date(`${backfillFrom}T00:00:00Z`) : undefined,
   });
-  return NextResponse.json({ results });
+  return NextResponse.json(result);
 }

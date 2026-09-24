@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RelativeTime } from "@/components/layout/relative-time";
 import { SyncButton } from "@/components/layout/sync-button";
-import { isLocationKey } from "@/lib/config/locations";
 import { getDb } from "@/lib/db/client";
 import type { SyncStatus } from "@/lib/db/schema";
-import { ghlToken } from "@/lib/env";
-import { getLocationStatuses, getRecentRuns } from "@/lib/queries/sync-status";
+import { oauthConfigFromEnv } from "@/lib/ghl/oauth-config";
+import { Button } from "@/components/ui/button";
+import { setTracking } from "./actions";
+import { getConnectionStatus, getLocationStatuses, getRecentRuns } from "@/lib/queries/sync-status";
 import { BackfillForm } from "./backfill-form";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,17 @@ function fmtTime(d: Date | null) {
     : "—";
 }
 
-export default async function SyncPage() {
+export default async function SyncPage({ searchParams }: PageProps<"/sync">) {
   const db = getDb();
-  const [statuses, runs] = await Promise.all([getLocationStatuses(db), getRecentRuns(db)]);
+  const params = await searchParams;
+  const [statuses, runs, connection] = await Promise.all([
+    getLocationStatuses(db),
+    getRecentRuns(db),
+    getConnectionStatus(db),
+  ]);
+  const configured = oauthConfigFromEnv() !== null;
+  const ghlError = typeof params.ghl_error === "string" ? params.ghl_error : null;
+  const justConnected = typeof params.connected === "string" ? Number(params.connected) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,13 +48,54 @@ export default async function SyncPage() {
         <SyncButton label="Sync all now" variant="default" />
       </div>
 
-      {statuses.length === 0 && (
-        <Card>
-          <CardContent className="text-muted-foreground text-sm">
-            No locations yet. Run <code>npm run db:migrate</code> (it seeds the 4 sub-accounts), or click Sync now.
+      {ghlError && (
+        <Card className="border-bad/50">
+          <CardContent className="text-bad text-sm">{ghlError}</CardContent>
+        </Card>
+      )}
+      {justConnected !== null && !ghlError && (
+        <Card className="border-ok/50">
+          <CardContent className="text-sm">
+            GHL connected. {justConnected} new sub-account{justConnected === 1 ? "" : "s"} found.
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>GHL agency connection</CardTitle>
+          <CardDescription>
+            One install of the private Marketplace app covers every sub-account. New sub-accounts appear here
+            automatically and are tracked if they have the outreach pipeline.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3 text-sm">
+          {!configured ? (
+            <span className="text-bad">
+              Set <code>GHL_CLIENT_ID</code> and <code>GHL_CLIENT_SECRET</code> (see README), then reload.
+            </span>
+          ) : connection ? (
+            <>
+              <Badge variant={connection.lastError ? "bad" : "ok"}>{connection.lastError ? "needs attention" : "connected"}</Badge>
+              <span className="text-muted-foreground">
+                Agency <code>{connection.companyId}</code> · connected <RelativeTime date={connection.connectedAt} /> ·
+                sub-accounts checked <RelativeTime date={connection.locationsDiscoveredAt} />
+              </span>
+              {connection.lastError && <span className="text-bad w-full">{connection.lastError}</span>}
+              <div className="flex gap-2">
+                <SyncButton label="Re-check sub-accounts" forceDiscover />
+                <Button asChild size="sm" variant="ghost">
+                  <a href="/api/ghl/connect">Reconnect</a>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button asChild>
+              <a href="/api/ghl/connect">Connect GHL agency</a>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -57,7 +107,7 @@ export default async function SyncPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Sub-account</TableHead>
-                <TableHead>Token</TableHead>
+                <TableHead>Tracking</TableHead>
                 <TableHead>Pipeline</TableHead>
                 <TableHead className="text-right">Contacts</TableHead>
                 <TableHead className="text-right">Conversations</TableHead>
@@ -69,13 +119,33 @@ export default async function SyncPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {statuses.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-muted-foreground">
+                    No sub-accounts yet. Connect GHL above.
+                  </TableCell>
+                </TableRow>
+              )}
               {statuses.map((s) => {
-                const hasToken = isLocationKey(s.key) && ghlToken(s.key) !== null;
                 return (
-                  <TableRow key={s.key}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableRow key={s.key} className={s.active && s.installed ? undefined : "opacity-60"}>
+                    <TableCell className="font-medium">
+                      <span className="text-muted-foreground mr-1.5">{s.key}</span>
+                      {s.name}
+                    </TableCell>
                     <TableCell>
-                      {hasToken ? <Badge variant="ok">set</Badge> : <Badge variant="bad">GHL_TOKEN_{s.key} missing</Badge>}
+                      {!s.installed ? (
+                        <Badge variant="bad">app not installed</Badge>
+                      ) : (
+                        <form action={setTracking} className="flex items-center gap-2">
+                          <input type="hidden" name="key" value={s.key} />
+                          <input type="hidden" name="active" value={String(!s.active)} />
+                          <Badge variant={s.active ? "ok" : "secondary"}>{s.active ? "tracked" : "ignored"}</Badge>
+                          <Button type="submit" size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                            {s.active ? "Ignore" : "Track"}
+                          </Button>
+                        </form>
+                      )}
                     </TableCell>
                     <TableCell>
                       {s.pipelineId ? (
@@ -108,7 +178,7 @@ export default async function SyncPage() {
                       {s.backfillFrom && <div className="text-warn">backfill at {fmtTime(s.backfillFrom)}</div>}
                     </TableCell>
                     <TableCell>
-                      <SyncButton locationKeys={[s.key]} label={`Sync ${s.key}`} />
+                      {s.active && s.installed && <SyncButton locationKeys={[s.key]} label={`Sync ${s.key}`} />}
                     </TableCell>
                   </TableRow>
                 );
@@ -122,12 +192,12 @@ export default async function SyncPage() {
         <CardHeader>
           <CardTitle>Backfill</CardTitle>
           <CardDescription>
-            Re-walks all SMS from a date forward (idempotent). Large ranges continue automatically on the next scheduled
-            runs.
+            Re-walks all SMS from a date forward (idempotent). Large ranges continue on the next
+            syncs.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BackfillForm locationKeys={statuses.map((s) => s.key)} />
+          <BackfillForm locationKeys={statuses.filter((s) => s.active && s.installed).map((s) => s.key)} />
         </CardContent>
       </Card>
 

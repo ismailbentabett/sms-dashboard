@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 interface Props {
   locationKeys?: string[];
   backfillFrom?: string;
+  forceDiscover?: boolean;
   label?: string;
   size?: "sm" | "default";
   variant?: "default" | "outline";
 }
 
 /** Calls POST /api/sync and refreshes server data when it finishes. */
-export function SyncButton({ locationKeys, backfillFrom, label = "Sync now", size = "sm", variant = "outline" }: Props) {
+export function SyncButton({ locationKeys, backfillFrom, forceDiscover, label = "Sync now", size = "sm", variant = "outline" }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,12 +28,11 @@ export function SyncButton({ locationKeys, backfillFrom, label = "Sync now", siz
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locationKeys, backfillFrom }),
+        body: JSON.stringify({ locationKeys, backfillFrom, forceDiscover }),
       });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(body.error ?? `Sync failed (${res.status})`);
-      }
+      const body = (await res.json().catch(() => ({}))) as { error?: string; problem?: string | null };
+      if (!res.ok) setError(body.error ?? `Sync failed (${res.status})`);
+      else if (body.problem) setError(body.problem);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sync failed");
     } finally {

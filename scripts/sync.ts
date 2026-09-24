@@ -10,8 +10,7 @@ import { parseArgs } from "node:util";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@/lib/db/schema";
-import { clientFromEnv } from "@/lib/sync/clients";
-import { requestBackfill, runSync } from "@/lib/sync/run";
+import { runDashboardSync } from "@/lib/sync/service";
 
 async function main() {
   const { values } = parseArgs({
@@ -26,18 +25,18 @@ async function main() {
   const pool = new Pool({ connectionString: url, max: 2 });
   const db = drizzle(pool, { schema });
   const locationKeys = values.loc?.map((l) => l.toUpperCase());
+  let backfillFrom: Date | undefined;
   if (values.backfill) {
-    const from = new Date(`${values.backfill}T00:00:00Z`);
-    if (Number.isNaN(from.getTime())) throw new Error("--backfill must be YYYY-MM-DD");
-    await requestBackfill(db, from, locationKeys);
+    backfillFrom = new Date(`${values.backfill}T00:00:00Z`);
+    if (Number.isNaN(backfillFrom.getTime())) throw new Error("--backfill must be YYYY-MM-DD");
   }
-  const results = await runSync({
-    db,
-    clientFor: clientFromEnv,
-    kind: values.backfill ? "backfill" : "incremental",
+  const { results, problem } = await runDashboardSync(db, {
     locationKeys,
+    backfillFrom,
+    forceDiscover: true,
     budgetMs: values.budget ? Number(values.budget) * 1000 : undefined,
   });
+  if (problem) console.warn(problem);
   console.table(results.map((r) => ({ location: r.locationKey, status: r.status, run: r.runId, error: r.error?.split("\n")[0] ?? "" })));
   await pool.end();
 }

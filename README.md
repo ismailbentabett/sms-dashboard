@@ -14,7 +14,7 @@ Requirements: Node 22+, a Postgres database (local, or a Neon branch).
 npm install
 cp .env.example .env.local      # fill in the values (see §3)
 cp .env.local .env              # CLI scripts (migrate, sync) read .env
-npm run db:migrate              # applies migrations and seeds the 4 locations
+npm run db:migrate              # applies migrations
 npm run dev                     # http://localhost:3000
 ```
 
@@ -26,40 +26,39 @@ Useful scripts:
 | `npm test` | Unit + integration tests (Vitest; integration tests use in-memory PGlite and fixture JSON, no GHL calls) |
 | `npm run typecheck` / `npm run lint` | TypeScript / ESLint |
 | `npm run db:generate` | Generate a new migration after editing `src/lib/db/schema.ts` |
-| `npm run db:migrate` | Apply migrations + seed locations |
+| `npm run db:migrate` | Apply migrations |
 | `npm run sync` | Incremental sync of all locations from the CLI |
 | `npm run sync -- --loc A` | Only sub-account A |
 | `npm run sync -- --backfill 2026-09-01 --budget 900` | Backfill from a date with a 15-minute budget (no Vercel limit locally) |
 
-## 2. GHL Private Integration Tokens (one per sub-account)
+## 2. Connect GHL (agency-level, one time)
 
-This app only reads from GHL. For **each** of the 4 sub-accounts:
+One private Marketplace app, installed once at agency level, covers every sub-account. The dashboard lists the sub-accounts the app is installed on and gets each one's access token itself. **New sub-accounts show up by themselves** and are tracked if they have the `SMS Outreach - Remodelers - FB Ads` pipeline. You can turn tracking on or off per sub-account on `/sync`.
 
-1. Switch into the sub-account → **Settings → Private Integrations**.
-2. **Create new Integration**. Name it e.g. `SMS Dashboard (read-only)`.
-3. Select exactly these scopes:
+(Agency Private Integration Tokens can't be used: GHL only serves conversations, contacts and opportunities to sub-account tokens, and agency PITs can't create those.)
 
-   | Scope | Used for |
-   |---|---|
-   | `conversations.readonly` | Conversation lookup for targeted re-sync |
-   | `conversations/message.readonly` | Message export and conversation messages |
-   | `contacts.readonly` | Contact search and contact by id |
-   | `opportunities.readonly` | Pipelines, stages, opportunity search |
-   | `locations.readonly` | Location details (timezone) |
-   | `locations/customFields.readonly` | Only needed if niche comes from a custom field |
+### 2a. Create the app (≈10 min)
 
-4. Copy the token into `GHL_TOKEN_A` (sub-account A), `GHL_TOKEN_B`, `GHL_TOKEN_C`, `GHL_TOKEN_D`.
+1. Go to **https://marketplace.gohighlevel.com**, sign in with your agency login, and create a developer account if asked.
+2. **My Apps → Create App**:
+   - **App type: Private**. Only your agency can see or install it.
+   - **Target user / distribution: Agency** (installable by the agency on its sub-accounts). If you see "Agency & Sub-account", pick that.
+3. Open the app, then **Advanced Settings → Auth**:
+   - **Scopes**, select exactly these (all read-only; the two `oauth.*` ones let the agency token list sub-accounts and get their tokens):
+     `oauth.readonly`, `oauth.write`, `locations.readonly`, `locations/customFields.readonly`, `contacts.readonly`, `conversations.readonly`, `conversations/message.readonly`, `opportunities.readonly`
+   - **Redirect URL**: `https://<your-app>.vercel.app/api/ghl/callback`. Also add `http://localhost:3000/api/ghl/callback` for local dev.
+   - **Client Keys → Add**: copy the **Client ID** and **Client Secret** (the secret is shown once).
+4. Set the env vars `GHL_CLIENT_ID` and `GHL_CLIENT_SECRET` (§3) and redeploy.
 
-A missing token doesn't break anything: that location's runs show as **skipped** on `/sync`.
+GHL renames menus from time to time. If a label differs, look for the same setting nearby.
 
-| Key | Sub-account | Location ID |
-|---|---|---|
-| A | A: Website + Normal SMS | `U8cEIiAwrnS7QEzMyRNj` |
-| B | B: Website + Loom SMS | `uciXzsgWKcwnEOhYxVe3` |
-| C | C: Lead + Normal SMS | `adOazVo5iRrj2qDc2z1N` |
-| D | D: Lead + Loom SMS | `cR5FxMwT2HvGbqylJBfs` |
+### 2b. Install it
 
-(Seeded from `src/lib/config/locations.ts` into the `locations` table.)
+1. Open the dashboard → **Sync status** → **Connect GHL agency**.
+2. GHL asks where to install: choose **your agency** (not a single sub-account), select **all sub-accounts**, and if offered, tick **install on future sub-accounts**.
+3. You land back on `/sync` with the sub-accounts listed. The first sync starts automatically.
+
+If the refresh token ever stops working (e.g. the app was uninstalled), `/sync` shows "needs attention"; click **Reconnect**.
 
 ## 3. Environment variables
 
@@ -68,11 +67,13 @@ All are server-only; none are exposed to the browser.
 | Variable | Required | Notes |
 |---|---|---|
 | `DATABASE_URL` | yes | Neon **pooled** connection string (host contains `-pooler`), `?sslmode=require` |
-| `GHL_TOKEN_A` … `GHL_TOKEN_D` | per location | Private Integration Tokens (§2) |
+| `GHL_CLIENT_ID` | yes | Marketplace app Client ID (§2a) |
+| `GHL_CLIENT_SECRET` | yes | Marketplace app Client Secret |
+| `GHL_APP_ID` | no | Only if sub-account discovery fails with an appId error; defaults to the part of the Client ID before the first `-` |
 | `DASHBOARD_PASSWORD` | yes | Login password, ≥ 8 chars |
-| `SESSION_SECRET` | yes | ≥ 32 chars; signs the session cookie. `openssl rand -base64 48` |
+| `SESSION_SECRET` | yes | ≥ 32 chars; signs the session cookie and encrypts the stored GHL tokens. `openssl rand -base64 48` |
 
-Changing `SESSION_SECRET` logs you out everywhere.
+Changing `SESSION_SECRET` logs you out and means clicking **Reconnect** for GHL (stored tokens can no longer be decrypted).
 
 ## 4. Neon (Postgres)
 
